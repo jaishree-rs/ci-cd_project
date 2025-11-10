@@ -2,18 +2,20 @@ pipeline {
     agent any // Run on any available Jenkins agent
 
     environment {
-        // --- START: CONFIGURE LATER IN JENKINS ---
-        // These are placeholders. We will set them up in AWS & Jenkins.
-        AWS_ACCOUNT_ID      = 'YOUR_AWS_ACCOUNT_ID'
-        AWS_REGION          = 'us-east-1' // Update this later if you use a different region
-        ECR_REPO_NAME       = 'my-ci-cd-app' // We will create this ECR repository
-        AWS_CREDENTIALS_ID  = 'aws-credentials' // We will create this in Jenkins
-        APP_SERVER_SSH_ID   = 'app-server-ssh-key' // We will create this in Jenkins
-        APP_SERVER_IP       = 'YOUR_APP_SERVER_IP' // We will get this from our EC2 instance
+        // --- These are your custom values ---
+        AWS_ACCOUNT_ID      = '651539067267'
+        AWS_REGION          = 'us-east-1' // This is correct for N. Virginia
+        APP_SERVER_IP       = '3.95.211.217'
+        // --- End of your custom values ---
+        
+        ECR_REPO_NAME       = 'my-ci-cd-app' // This is correct from our setup
+        AWS_CREDENTIALS_ID  = 'aws-credentials' // This is correct from our setup
+        APP_SERVER_SSH_ID   = 'app-server-ssh-key' // This is correct from our setup
         APP_SERVER_USER     = 'ec2-user'
-        // --- END: CONFIGURE LATER IN JENKINS ---
-
-        ECR_REGISTRY_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        
+        // These are built automatically from the variables above
+        // We make sure the ECR_REGISTRY_URL is all lowercase to fix the build error
+        ECR_REGISTRY_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com".toLowerCase()
         IMAGE_TAG        = "${ECR_REPO_NAME}:${BUILD_NUMBER}"
         LATEST_IMAGE_URL = "${ECR_REGISTRY_URL}/${IMAGE_TAG}"
     }
@@ -28,8 +30,6 @@ pipeline {
 
         stage('2. Build Project') {
             steps {
-                echo 'Installing Node.js dependencies...'
-                // sh 'npm install' // We run this inside Docker, so skipping here for now.
                 echo 'Skipping npm install, will be done in Docker build.'
             }
         }
@@ -52,6 +52,7 @@ pipeline {
         stage('5. Push to AWS ECR') {
             steps {
                 echo "Logging into AWS ECR..."
+                // Use the 'aws-credentials' we stored in Jenkins
                 withCredentials([aws(credentialsId: AWS_CREDENTIALS_ID, region: AWS_REGION)]) {
                     sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY_URL}"
                 }
@@ -67,6 +68,7 @@ pipeline {
         stage('6. Deploy to EC2') {
             steps {
                 echo "Deploying to App Server at ${APP_SERVER_IP}..."
+                // Use the 'app-server-ssh-key' we stored in Jenkins
                 withCredentials([sshUserPrivateKey(credentialsId: APP_SERVER_SSH_ID, keyFileVariable: 'SSH_KEY_FILE')]) {
                     // Use SSH to connect to the app server and run commands
                     sh """
@@ -99,12 +101,11 @@ pipeline {
     }
     
     post {
-        // This 'post' block runs after all stages
         always {
             echo 'Cleaning up workspace...'
-            // Clean up the docker image from the Jenkins server to save space
-            sh "docker rmi ${LATEST_IMAGE_URL} || true"
-            sh "docker rmi ${IMAGE_TAG} || true"
+            // We'll just clean up the local tag.
+            // 'env.BUILD_NUMBER' is always available.
+            sh "docker rmi ${env.ECR_REPO_NAME}:${env.BUILD_NUMBER} || true"
         }
     }
 }
