@@ -5,7 +5,7 @@ const PORT = 8080;
 const HOST = '0.0.0.0';
 
 app.get('/', (req, res) => {
-  res.send('<h1>Hello, World!</h1><p>CI/CD Pipeline on AWS is working!</p><p>Version: 1.0.0</p>');
+  res.send('<h1>Hello, World!</h1><p>CI/CD Pipeline on AWS is working!</p><p>Version: 2.0.0</p>');
 });
 
 app.listen(PORT, HOST, () => {
