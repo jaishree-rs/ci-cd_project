@@ -5,7 +5,7 @@ pipeline {
         // --- These are your custom values ---
         AWS_ACCOUNT_ID      = '651539067267'
         AWS_REGION          = 'us-east-1' // This is correct for N. Virginia
-        APP_SERVER_IP       = '3.95.211.217'
+        APP_SERVER_IP       = '98.89.44.51'
         // --- End of your custom values ---
         
         ECR_REPO_NAME       = 'my-ci-cd-app' // This is correct from our setup
